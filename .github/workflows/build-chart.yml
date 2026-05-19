@@ -1,0 +1,73 @@
+name: Build & Deploy Q3 Availability Chart
+
+# ---------------------------------------------------------------------------
+# WHEN IT RUNS:
+#   - push to main : rebuilds & redeploys on every push to main (primary).
+#   - workflow_dispatch : the "Run workflow" button, kept for manual reruns
+#                         without needing a commit.
+#   - schedule : commented out. Uncomment the cron if you later also want a
+#                periodic auto-refresh independent of pushes.
+# ---------------------------------------------------------------------------
+on:
+  push:
+    branches: [ main ]
+  workflow_dispatch: {}           # manual trigger (convenience; optional)
+  # schedule:
+  #   - cron: "0 6 * * 1"         # every Monday 06:00 UTC
+
+# Permissions required for the GitHub Pages deployment.
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+# Avoid overlapping deploys.
+concurrency:
+  group: "pages"
+  cancel-in-progress: false
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install dependencies
+        run: pip install -r requirements.txt
+
+      - name: Build chart from USDA data
+        env:
+          # The secret. In the repo: Settings > Secrets and variables >
+          # Actions > New repository secret, named exactly USDA_API_KEY.
+          USDA_API_KEY: ${{ secrets.USDA_API_KEY }}
+          # Flip to "api" once scripts/fetch_data.py:fetch_from_api() is
+          # filled in. While "csv", it builds from the committed CSV and
+          # the key is not required.
+          DATA_SOURCE: "csv"
+          CSV_FALLBACK_PATH: "data/refrigerated_truck_rates_and_availability.csv"
+        run: |
+          python scripts/build_chart.py dist/Q3_Availability_Graph.html
+          # Pages serves index.html by default — make the chart the landing page.
+          cp dist/Q3_Availability_Graph.html dist/index.html
+
+      - name: Upload Pages artifact
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: dist
+
+  deploy:
+    needs: build
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - name: Deploy to GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v4
