@@ -46,10 +46,9 @@ jobs:
           # The secret. In the repo: Settings > Secrets and variables >
           # Actions > New repository secret, named exactly USDA_API_KEY.
           USDA_API_KEY: ${{ secrets.USDA_API_KEY }}
-          # Flip to "api" once scripts/fetch_data.py:fetch_from_api() is
-          # filled in. While "csv", it builds from the committed CSV and
-          # the key is not required.
-          DATA_SOURCE: "csv"
+          # Live USDA MyMarketNews MARS API (slug 2375, FVWTRK).
+          # Set to "csv" to fall back to the committed CSV without an API key.
+          DATA_SOURCE: "api"
           CSV_FALLBACK_PATH: "data/refrigerated_truck_rates_and_availability.csv"
         run: |
           python scripts/build_chart.py dist/Q3_Availability_Graph.html

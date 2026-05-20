@@ -1,26 +1,22 @@
 """
 USDA reefer-availability data acquisition.
 
-IMPORTANT — READ THIS:
 This file is the ONLY place that touches the USDA API. It is deliberately
-isolated so you can drop in the real API contract without touching the
-chart-generation logic.
+isolated so the API contract is independent of the chart-generation logic.
 
-I do NOT know the real USDA API shape (base URL, auth header, endpoint
-paths, response schema) — that was never reachable during development and
-the data provided was a CSV export. So `fetch_from_api()` below is a
-TEMPLATE with the standard patterns marked. Fill in the 4 marked spots.
+Source: USDA AMS MyMarketNews MARS API, report slug 2375 — Specialty Crops
+National Truck Rate Report (FVWTRK). It carries the weekly 1-5 truck
+availability scale (1=Surplus -> 5=Shortage) by origin region, which is
+what the chart consumes.
 
 `fetch_data()` returns a pandas DataFrame with AT LEAST these columns:
     Week (int), Quarter (int), Year (int), Region (str), Availability (float)
 
-A CSV fallback is included so the pipeline runs end-to-end TODAY even
-before the API wiring is done. Set USE_API=True (or env DATA_SOURCE=api)
-once your fetch_from_api() is filled in.
+A CSV fallback is retained for local runs without an API key. Set
+DATA_SOURCE=api (the workflow does this by default) to use the live API.
 """
 from __future__ import annotations
 import os
-import io
 import sys
 import pandas as pd
 import requests
@@ -45,53 +41,53 @@ REQUIRED_COLUMNS = ["Week", "Quarter", "Year", "Region", "Availability"]
 
 
 def fetch_from_api() -> pd.DataFrame:
-    """
-    Pull live data from the USDA API.
-
-    >>> FILL IN THE 4 MARKED SPOTS BELOW <<<
-
-    The structure (request -> check -> parse -> normalize) is correct and
-    standard; only the USDA-specific details are unknown to me.
-    """
+    """Pull live data from the USDA MyMarketNews MARS API."""
     if not USDA_API_KEY:
         raise RuntimeError(
             "USDA_API_KEY is empty. In GitHub it must be set as a repo secret "
             "and mapped in the workflow env. Locally: export USDA_API_KEY=..."
         )
 
-    # [1] REAL ENDPOINT — replace with the actual USDA API URL.
-    url = "https://REPLACE-WITH-REAL-USDA-API-ENDPOINT"
+    # [1] Endpoint: MARS API report slug 2375 = Specialty Crops National
+    #     Truck Rate Report (FVWTRK), which exposes the weekly 1-5 reefer
+    #     availability series by origin region.
+    url = "https://marsapi.ams.usda.gov/services/v1.2/reports/2375"
 
-    # [2] AUTH — USDA APIs commonly use one of these. Keep the one that
-    #     matches your API's docs; delete the others.
-    headers = {
-        "Authorization": f"Bearer {USDA_API_KEY}",   # bearer-token style
-        # "X-Api-Key": USDA_API_KEY,                  # api-key-header style
-        "Accept": "application/json",
-    }
-    params = {
-        # "api_key": USDA_API_KEY,                    # query-param style
-        # [3] QUERY PARAMS — date range, dataset id, format, etc.
-        # e.g. "commodity": "refrigerated-truck", "format": "json",
-    }
+    # [2] Auth: HTTP Basic, API key as username, empty password.
+    auth = (USDA_API_KEY, "")
+    headers = {"Accept": "application/json"}
 
-    resp = requests.get(url, headers=headers, params=params, timeout=60)
+    # [3] MARS filter syntax: q=field=value, ranges use ':'. Pull a wide
+    #     window so the per-year dropdown and the 4-year average both have
+    #     enough history; end-date is today so the latest week is included.
+    today = pd.Timestamp.today().strftime("%m/%d/%Y")
+    params = {"q": f"report_begin_date=01/01/2010:{today}"}
+
+    resp = requests.get(url, auth=auth, headers=headers,
+                        params=params, timeout=60)
     resp.raise_for_status()
 
-    # [4] RESPONSE PARSING — adapt to the real schema. Two common shapes:
-    #
-    #   a) JSON records:
-    #        payload = resp.json()
-    #        df = pd.DataFrame(payload["results"])   # adjust the key
-    #
-    #   b) CSV body:
-    #        df = pd.read_csv(io.StringIO(resp.text))
-    #
-    # Using (a) as the default guess:
+    # [4] Response: {"results": [{report_begin_date, region, availability, ...}, ...]}.
+    #     Derive Week / Quarter / Year from report_begin_date and map the
+    #     region / availability fields to the canonical column names.
     payload = resp.json()
-    records = payload.get("results", payload)  # tolerate either shape
-    df = pd.DataFrame(records)
+    records = payload.get("results", payload)
+    raw = pd.DataFrame(records)
+    if raw.empty:
+        raise ValueError(
+            "USDA API returned 0 rows for slug 2375. Check the date range "
+            "and that the API key is valid."
+        )
+    raw.columns = [c.lower() for c in raw.columns]
 
+    dates = pd.to_datetime(raw["report_begin_date"], errors="coerce")
+    df = pd.DataFrame({
+        "Week": dates.dt.isocalendar().week.astype("Int64"),
+        "Quarter": dates.dt.quarter.astype("Int64"),
+        "Year": dates.dt.year.astype("Int64"),
+        "Region": raw["region"],
+        "Availability": raw["availability"],
+    })
     return _normalize(df)
 
 
