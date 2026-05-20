@@ -227,7 +227,7 @@ function draw(){{
       range:[curLo-0.4,curHi+0.4]}},
     yaxis:{{title:{{text:"Average of Availability",
         font:{{family:'Montserrat',size:14,color:"#1a1a1a"}}}},
-      range:[0,5],tickmode:"array",tickvals:[0,1,2,3,4,5],
+      range:[1,5],tickmode:"array",tickvals:[1,2,3,4,5],
       gridcolor:"#eeeeee",zeroline:false,
       tickfont:{{size:12,family:FONT,color:"#5f5f5f"}}}},
     shapes:[{{type:"line",xref:"paper",x0:0,x1:1,yref:"y",y0:BASE,y1:BASE,
