@@ -220,7 +220,7 @@ function draw(){{
     hovermode:"closest",
     hoverlabel:{{bgcolor:"#1a1a1a",bordercolor:"#1a1a1a",
       font:{{color:"#fff",family:FONT,size:12.5}}}},
-    margin:{{l:70,r:30,t:8,b:20}},
+    margin:{{l:70,r:30,t:20,b:20}},
     xaxis:{{showticklabels:false,
       tickmode:"array",tickvals:WK,
       showgrid:false,zeroline:false,
