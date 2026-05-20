@@ -49,6 +49,11 @@ DATASET_ID = "acar-e3r8"
 API_URL = f"https://{SOCRATA_DOMAIN}/resource/{DATASET_ID}.json"
 PAGE_SIZE = 10_000
 
+# Year window exposed by the chart's Year dropdown (inclusive). Both fetch
+# paths clip to this range so the dropdown only ever lists these years.
+YEAR_MIN = 2022
+YEAR_MAX = 2025
+
 
 _GREAT_LAKES = {"GREAT LAKES", "MICHIGAN", "WISCONSIN", "MINNESOTA",
                 "OHIO", "INDIANA", "ILLINOIS"}
@@ -139,11 +144,15 @@ def fetch_from_api() -> pd.DataFrame:
 
     rows: list[dict[str, Any]] = []
     offset = 0
+    # Server-side year filter — keeps the download to the 4 years the chart
+    # actually exposes in its Year dropdown.
+    where = f"date_extract_y(date) BETWEEN {YEAR_MIN} AND {YEAR_MAX}"
     while True:
         params: dict[str, Any] = {
             "$limit": PAGE_SIZE,
             "$offset": offset,
             "$order": ":id",
+            "$where": where,
         }
         print(f"[fetch_data] page offset={offset:>7} ",
               end="", file=sys.stderr, flush=True)
@@ -195,6 +204,7 @@ def fetch_from_csv() -> pd.DataFrame:
             f"CSV there, or set DATA_SOURCE=api once fetch_from_api() is done."
         )
     df = pd.read_csv(CSV_FALLBACK_PATH, usecols=lambda c: c in REQUIRED_COLUMNS)
+    df = df[pd.to_numeric(df["Year"], errors="coerce").between(YEAR_MIN, YEAR_MAX)]
     return _normalize(df)
 
 
