@@ -43,11 +43,12 @@ jobs:
 
       - name: Build chart from USDA data
         env:
-          # The secret. In the repo: Settings > Secrets and variables >
-          # Actions > New repository secret, named exactly USDA_API_KEY.
-          USDA_API_KEY: ${{ secrets.USDA_API_KEY }}
-          # Live USDA MyMarketNews MARS API (slug 2375, FVWTRK).
-          # Set to "csv" to fall back to the committed CSV without an API key.
+          # Optional Socrata app token (raises rate limits only — the dataset
+          # is public). In the repo: Settings > Secrets and variables >
+          # Actions > Repository secrets, named exactly SOCRATA_APP_TOKEN.
+          SOCRATA_APP_TOKEN: ${{ secrets.SOCRATA_APP_TOKEN }}
+          # Live USDA AMS Socrata dataset acar-e3r8 (Refrigerated Truck Rates
+          # and Availability). Set to "csv" to fall back to the committed CSV.
           DATA_SOURCE: "api"
           CSV_FALLBACK_PATH: "data/refrigerated_truck_rates_and_availability.csv"
         run: |
