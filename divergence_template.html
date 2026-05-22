@@ -192,20 +192,100 @@
 </div>
 
 <script>
+// Empty placeholder. Live data is fetched from the USDA AMS Socrata dataset
+// (acar-e3r8) on page load and assigned to DATA before the chart renders.
+// The `const DATA = {...};` shape is preserved so scripts/build_chart.py can
+// still inject a baked snapshot if ever needed — but the runtime always
+// re-fetches on its own.
 const DATA = {"years":[2022,2023,2024,2025],"regions":[],"stats":{"all":{},"2022":{},"2023":{},"2024":{},"2025":{}}};
 const BASE = 3;
 const THIN_THRESHOLD = 20;  // n < 20 flagged as thin sample
 
-// Compute a stable max-deviation across all year views so the axis scale
-// stays comparable between selections (1.93 from Mexico-Texas 4yr is the max)
+const SOCRATA_URL = "https://agtransport.usda.gov/resource/acar-e3r8.json";
+const YEARS = [2022, 2023, 2024, 2025];
+const Q3 = 3;
+const EXCLUDE_REGIONS = new Set(["OTHER"]);
+
 let maxDev = 0;
-for (const k in DATA.stats) {
-  for (const r in DATA.stats[k]) {
-    const v = DATA.stats[k][r].mean;
-    if (v !== null) maxDev = Math.max(maxDev, Math.abs(v - BASE));
+
+function computeMaxDev() {
+  maxDev = 0;
+  for (const k in DATA.stats) {
+    for (const r in DATA.stats[k]) {
+      const v = DATA.stats[k][r].mean;
+      if (v !== null) maxDev = Math.max(maxDev, Math.abs(v - BASE));
+    }
   }
+  maxDev += 0.12;  // padding
 }
-maxDev += 0.12;  // padding
+
+function displayName(key) {
+  if (key === "PNW") return "PNW";
+  return key.split("-").map(p =>
+    p.charAt(0).toUpperCase() + p.slice(1).toLowerCase()
+  ).join("-");
+}
+
+async function fetchSocrata() {
+  const where =
+    `quarter=${Q3} AND year between ${YEARS[0]} and ${YEARS[YEARS.length - 1]}`;
+  const params = new URLSearchParams({
+    "$select": "year,quarter,region,availability",
+    "$where": where,
+    "$limit": "50000"
+  });
+  const r = await fetch(`${SOCRATA_URL}?${params.toString()}`, {
+    headers: {"Accept": "application/json"}
+  });
+  if (!r.ok) throw new Error(`Socrata HTTP ${r.status}`);
+  return r.json();
+}
+
+function aggregate(rows) {
+  const cleaned = [];
+  for (const d of rows) {
+    const year = parseInt(d.year, 10);
+    const quarter = parseInt(d.quarter, 10);
+    const region = (d.region || "").trim().toUpperCase();
+    const avail = parseFloat(d.availability);
+    if (!Number.isFinite(year) || quarter !== Q3) continue;
+    if (!region || EXCLUDE_REGIONS.has(region)) continue;
+    if (!YEARS.includes(year)) continue;
+    if (!Number.isFinite(avail) || avail < 1 || avail > 5) continue;
+    cleaned.push({year, region, avail});
+  }
+  const regions = [...new Set(cleaned.map(d => d.region))];
+  function stat(arr) {
+    if (arr.length === 0) return {mean: null, n: 0};
+    const m = arr.reduce((s, v) => s + v, 0) / arr.length;
+    return {mean: Math.round(m * 1000) / 1000, n: arr.length};
+  }
+  const stats = {all: {}};
+  for (const r of regions) {
+    stats.all[r] = stat(cleaned.filter(d => d.region === r).map(d => d.avail));
+  }
+  for (const y of YEARS) {
+    stats[String(y)] = {};
+    for (const r of regions) {
+      stats[String(y)][r] = stat(
+        cleaned.filter(d => d.region === r && d.year === y).map(d => d.avail)
+      );
+    }
+  }
+  const kept = regions.filter(r => stats.all[r].n > 0);
+  // Tightest (highest mean on 1=surplus / 5=shortage scale) first.
+  kept.sort((a, b) => stats.all[b].mean - stats.all[a].mean);
+  for (const bucket of Object.values(stats)) {
+    for (const r of Object.keys(bucket)) {
+      if (!kept.includes(r)) delete bucket[r];
+    }
+  }
+  return {
+    years: YEARS,
+    regions: kept.map(r => ({key: r, name: displayName(r)})),
+    stats
+  };
+}
 
 function colorFor(mean) {
   if (mean >= 4.0) return "var(--mango-deep)";
@@ -255,21 +335,32 @@ tooltip.innerHTML = '<div class="tt-name"></div><div class="tt-val"></div><div c
 rowsWrap.appendChild(tooltip);
 
 const rowEls = {};
-DATA.regions.forEach(r => {
-  const row = document.createElement("div");
-  row.className = "row";
-  row.innerHTML =
-    `<div class="name" data-r="${r.key}">${r.name}</div>
-     <div class="barwrap">
-       <div class="bar"></div>
-       <span class="val"></span>
-       <span class="thintag" style="display:none"></span>
-       <span class="nodata" style="display:none">no reports this year</span>
-     </div>`;
-  rowsWrap.appendChild(row);
-  rowEls[r.key] = row;
-});
+function buildRows() {
+  for (const k in rowEls) rowEls[k].remove();
+  for (const k of Object.keys(rowEls)) delete rowEls[k];
+  DATA.regions.forEach(r => {
+    const row = document.createElement("div");
+    row.className = "row";
+    row.innerHTML =
+      `<div class="name" data-r="${r.key}">${r.name}</div>
+       <div class="barwrap">
+         <div class="bar"></div>
+         <span class="val"></span>
+         <span class="thintag" style="display:none"></span>
+         <span class="nodata" style="display:none">no reports this year</span>
+       </div>`;
+    rowsWrap.appendChild(row);
+    rowEls[r.key] = row;
+  });
+}
 chart.appendChild(rowsWrap);
+
+// Loading indicator shown while we wait for the Socrata response.
+const loadingEl = document.createElement("div");
+loadingEl.style.cssText =
+  "padding:80px 0;text-align:center;color:var(--n-text);font-size:13px";
+loadingEl.textContent = "Loading live USDA data…";
+rowsWrap.appendChild(loadingEl);
 
 function render(year) {
   currentYear = year;
@@ -393,7 +484,24 @@ rowsWrap.addEventListener("mouseout", (e) => {
   if (e.target.closest(".bar")) tooltip.classList.remove("show");
 });
 
-render("all");
+// Fetch live Socrata data, aggregate it, then build rows and render.
+fetchSocrata()
+  .then(rows => {
+    const fresh = aggregate(rows);
+    DATA.years = fresh.years;
+    DATA.regions = fresh.regions;
+    DATA.stats = fresh.stats;
+    loadingEl.remove();
+    buildRows();
+    computeMaxDev();
+    render("all");
+  })
+  .catch(err => {
+    console.error("Socrata fetch failed:", err);
+    loadingEl.textContent =
+      "Couldn't load USDA data — " + err.message;
+    loadingEl.style.color = "var(--mango-deep)";
+  });
 </script>
 </body>
 </html>
