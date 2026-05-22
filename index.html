@@ -1,0 +1,324 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Q3 Reefer Capacity — Regional Divergence</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@500;600;700&family=Open+Sans:wght@400;600&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --bg:#fafafa;--panel:#fff;--n-fill:#f4f4f4;--n-border:#e5e5e5;
+    --n-text:#9a9a9a;--ink:#1a1a1a;--mut:#5f5f5f;
+    --g-tint:#e8f1de;--g-mid:#4a8b2c;--g-dark:#1d3711;--g-darker:#16290d;
+    --mango:#ec7700;--mango-deep:#c25e00;
+  }
+  *{box-sizing:border-box;margin:0;padding:0}
+  body{background:var(--bg);color:var(--ink);
+    font-family:'Open Sans',-apple-system,sans-serif;padding:34px 28px;
+    line-height:1.5;font-size:14px}
+  .wrap{max-width:1020px;margin:0 auto}
+  .eyebrow{font-family:'Montserrat',sans-serif;font-size:11.5px;
+    letter-spacing:.13em;text-transform:uppercase;color:var(--g-mid);
+    font-weight:600;margin-bottom:7px}
+  h1{font-family:'Montserrat',sans-serif;font-size:23px;font-weight:700;
+    letter-spacing:-.01em;margin-bottom:5px}
+  .sub{color:var(--mut);font-size:13.5px;margin-bottom:22px;max-width:820px}
+  .sub b{color:var(--ink);font-weight:600}
+  .card{background:var(--panel);border:1px solid var(--n-border);
+    border-radius:12px;padding:24px 26px}
+  .head{display:flex;justify-content:space-between;align-items:flex-end;
+    margin-bottom:18px;gap:24px;flex-wrap:wrap}
+  .ctitle{font-family:'Montserrat',sans-serif;font-size:16px;font-weight:600;
+    margin-bottom:2px}
+  .csub{color:var(--mut);font-size:12.5px}
+  .yrtabs{display:flex;gap:4px;align-items:center}
+  .yrtab{font-family:'Open Sans',sans-serif;font-size:12.5px;font-weight:600;
+    padding:7px 14px;border:1px solid var(--n-border);background:#fff;
+    color:var(--ink);cursor:pointer;border-radius:7px;transition:all .12s;
+    font-variant-numeric:tabular-nums}
+  .yrtab:hover{border-color:var(--mango);background:#fff6ec}
+  .yrtab.on{background:var(--mango);border-color:var(--mango);color:#fff}
+  .yrlbl{font-family:'Montserrat',sans-serif;font-size:10.5px;
+    letter-spacing:.06em;text-transform:uppercase;color:var(--n-text);
+    font-weight:500;margin-right:6px}
+
+  .chart{position:relative;margin:0 auto;padding-left:128px;padding-right:24px}
+  .axis-band{position:relative;height:30px;margin-bottom:6px;
+    border-bottom:1px solid var(--n-border)}
+  .axis-band .arrowL,.axis-band .arrowR{position:absolute;bottom:6px;
+    font-size:11px;color:var(--mut);font-weight:600}
+  .axis-band .arrowL{left:0}
+  .axis-band .arrowR{right:0}
+  .axis-band .blbl{position:absolute;bottom:6px;left:50%;
+    transform:translateX(-50%);font-family:'Montserrat',sans-serif;
+    font-size:10.5px;font-weight:600;color:var(--ink);
+    letter-spacing:.04em;background:#fff;padding:0 6px}
+
+  .rows{position:relative}
+  .row{position:relative;height:32px;display:flex;align-items:center;
+    margin-bottom:2px}
+  .row .name{position:absolute;right:calc(100% + 12px);
+    width:120px;text-align:right;font-size:13px;font-weight:600;
+    color:var(--ink);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .row .barwrap{position:relative;width:100%;height:100%;background:transparent}
+  .row .bar{position:absolute;top:6px;bottom:6px;border-radius:3px;
+    transition:left .28s ease,width .28s ease,background .15s}
+  .row .bar.thin{
+    background-image:repeating-linear-gradient(45deg,
+      transparent 0,transparent 4px,
+      rgba(255,255,255,.45) 4px,rgba(255,255,255,.45) 7px);
+    background-size:auto;
+    opacity:.78
+  }
+  .row .val{position:absolute;top:50%;transform:translateY(-50%);
+    font-size:11.5px;font-weight:600;font-variant-numeric:tabular-nums;
+    font-family:'Open Sans',sans-serif;white-space:nowrap;
+    color:#fff;text-shadow:0 1px 2px rgba(0,0,0,.18);
+    transition:left .28s ease,right .28s ease}
+  .row .val.outside{color:var(--ink);text-shadow:none;font-weight:700}
+  .row .nodata{position:absolute;left:50%;top:50%;
+    transform:translate(-50%,-50%);font-size:11px;
+    color:var(--n-text);font-style:italic;white-space:nowrap}
+  .row .thintag{position:absolute;top:50%;transform:translateY(-50%);
+    font-size:10px;color:var(--n-text);font-style:italic;
+    font-weight:500}
+  .baseline{position:absolute;left:50%;top:0;bottom:0;width:1.5px;
+    background:var(--ink);transform:translateX(-50%);z-index:2;opacity:.55}
+
+  .legend{display:flex;gap:22px;flex-wrap:wrap;margin-top:18px;
+    padding-top:16px;border-top:1px solid var(--n-border);
+    font-size:12px;color:var(--mut)}
+  .legend span{display:flex;align-items:center;gap:7px}
+  .legend i{width:18px;height:11px;border-radius:2px;display:inline-block}
+  .legend i.thin{
+    background-image:repeating-linear-gradient(45deg,
+      var(--n-text) 0,var(--n-text) 3px,
+      #fff 3px,#fff 5px)}
+  .insight{margin-top:14px;padding:14px 16px;background:var(--n-fill);
+    border-left:3px solid var(--g-mid);border-radius:0 7px 7px 0;
+    font-size:12.5px;line-height:1.55;color:var(--mut)}
+  .insight b{color:var(--ink);font-weight:600}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <div class="eyebrow">Q3 Reefer &amp; Perishable Forecast 2026</div>
+  <h1>Where reefer capacity is tight vs. loose this Q3</h1>
+  <div class="sub">Each bar shows how a region&rsquo;s Q3 average availability deviates from the &ldquo;adequate&rdquo; baseline of 3. <b>Orange = chronic tightness</b>, <b>green = chronic surplus</b>. Switch years to see how individual seasons differ from the 4-year norm &mdash; some regions have shifted dramatically.</div>
+
+  <div class="card">
+    <div class="head">
+      <div>
+        <div class="ctitle">Regional capacity divergence from adequate baseline</div>
+        <div class="csub" id="csub">4-year Q3 average (2022&ndash;2025), all reporting weeks &amp; commodities</div>
+      </div>
+      <div class="yrtabs" id="yrtabs">
+        <span class="yrlbl">Year</span>
+        <button class="yrtab on" data-y="all">4-yr avg</button>
+        <button class="yrtab" data-y="2022">2022</button>
+        <button class="yrtab" data-y="2023">2023</button>
+        <button class="yrtab" data-y="2024">2024</button>
+        <button class="yrtab" data-y="2025">2025</button>
+      </div>
+    </div>
+
+    <div class="chart" id="chart"></div>
+
+    <div class="legend">
+      <span><i style="background:var(--mango-deep)"></i> Severe tightness (&gt;0.5 above)</span>
+      <span><i style="background:var(--mango)"></i> Tighter than adequate</span>
+      <span><i style="background:var(--n-text)"></i> Near adequate (&plusmn;0.15)</span>
+      <span><i style="background:var(--g-mid)"></i> Looser than adequate</span>
+      <span><i style="background:var(--g-darker)"></i> Severe surplus (&gt;0.5 below)</span>
+      <span><i class="thin" style="background:var(--n-text)"></i> Thin sample (n&lt;20)</span>
+    </div>
+
+    <div class="insight" id="insight"></div>
+  </div>
+</div>
+
+<script>
+const DATA = {"years":[2022,2023,2024,2025],"regions":[{"key":"INDIANA","name":"Indiana"},{"key":"MID-ATLANTIC","name":"Mid-Atlantic"},{"key":"FLORIDA","name":"Florida"},{"key":"SOUTHEAST","name":"Southeast"},{"key":"NEW YORK","name":"New York"},{"key":"GREAT LAKES","name":"Great Lakes"},{"key":"CALIFORNIA","name":"California"},{"key":"PNW","name":"PNW"},{"key":"ARIZONA","name":"Arizona"},{"key":"MEXICO-ARIZONA","name":"Mexico-Arizona"},{"key":"MEXICO-TEXAS","name":"Mexico-Texas"}],"stats":{"all":{"ARIZONA":{"mean":2.727,"n":165},"CALIFORNIA":{"mean":2.898,"n":2037},"FLORIDA":{"mean":3.589,"n":56},"GREAT LAKES":{"mean":2.95,"n":242},"INDIANA":{"mean":3.942,"n":52},"MEXICO-ARIZONA":{"mean":2.374,"n":187},"MEXICO-TEXAS":{"mean":1.071,"n":438},"MID-ATLANTIC":{"mean":3.696,"n":227},"NEW YORK":{"mean":3.0,"n":220},"PNW":{"mean":2.86,"n":1108},"SOUTHEAST":{"mean":3.183,"n":541}},"2022":{"ARIZONA":{"mean":null,"n":0},"CALIFORNIA":{"mean":3.0,"n":548},"FLORIDA":{"mean":3.889,"n":9},"GREAT LAKES":{"mean":2.857,"n":42},"INDIANA":{"mean":4.8,"n":10},"MEXICO-ARIZONA":{"mean":1.417,"n":72},"MEXICO-TEXAS":{"mean":1.046,"n":130},"MID-ATLANTIC":{"mean":4.756,"n":41},"NEW YORK":{"mean":3.0,"n":18},"PNW":{"mean":2.742,"n":295},"SOUTHEAST":{"mean":3.551,"n":187}},"2023":{"ARIZONA":{"mean":2.643,"n":126},"CALIFORNIA":{"mean":2.716,"n":729},"FLORIDA":{"mean":4.0,"n":12},"GREAT LAKES":{"mean":3.0,"n":115},"INDIANA":{"mean":3.0,"n":11},"MEXICO-ARIZONA":{"mean":3.0,"n":100},"MEXICO-TEXAS":{"mean":1.143,"n":126},"MID-ATLANTIC":{"mean":3.204,"n":54},"NEW YORK":{"mean":3.0,"n":72},"PNW":{"mean":2.838,"n":371},"SOUTHEAST":{"mean":3.0,"n":64}},"2024":{"ARIZONA":{"mean":3.0,"n":39},"CALIFORNIA":{"mean":3.0,"n":504},"FLORIDA":{"mean":3.333,"n":6},"GREAT LAKES":{"mean":3.0,"n":79},"INDIANA":{"mean":4.136,"n":22},"MEXICO-ARIZONA":{"mean":2.571,"n":7},"MEXICO-TEXAS":{"mean":1.0,"n":91},"MID-ATLANTIC":{"mean":3.722,"n":72},"NEW YORK":{"mean":3.0,"n":65},"PNW":{"mean":3.0,"n":298},"SOUTHEAST":{"mean":3.0,"n":122}},"2025":{"ARIZONA":{"mean":null,"n":0},"CALIFORNIA":{"mean":3.0,"n":256},"FLORIDA":{"mean":3.379,"n":29},"GREAT LAKES":{"mean":2.0,"n":6},"INDIANA":{"mean":3.667,"n":9},"MEXICO-ARIZONA":{"mean":3.0,"n":8},"MEXICO-TEXAS":{"mean":1.077,"n":91},"MID-ATLANTIC":{"mean":3.383,"n":60},"NEW YORK":{"mean":3.0,"n":65},"PNW":{"mean":2.868,"n":144},"SOUTHEAST":{"mean":2.976,"n":168}}}};
+const BASE = 3;
+const THIN_THRESHOLD = 20;  // n < 20 flagged as thin sample
+
+// Compute a stable max-deviation across all year views so the axis scale
+// stays comparable between selections (1.93 from Mexico-Texas 4yr is the max)
+let maxDev = 0;
+for (const k in DATA.stats) {
+  for (const r in DATA.stats[k]) {
+    const v = DATA.stats[k][r].mean;
+    if (v !== null) maxDev = Math.max(maxDev, Math.abs(v - BASE));
+  }
+}
+maxDev += 0.12;  // padding
+
+function colorFor(dev) {
+  if (dev >  0.50) return "var(--mango-deep)";
+  if (dev >  0.15) return "var(--mango)";
+  if (dev > -0.15) return "var(--n-text)";
+  if (dev > -0.50) return "var(--g-mid)";
+  return "var(--g-darker)";
+}
+
+const chart = document.getElementById("chart");
+const insightEl = document.getElementById("insight");
+const csubEl = document.getElementById("csub");
+let currentYear = "all";
+
+// Build static scaffold once (axis + row containers, in fixed sort order)
+const axis = document.createElement("div");
+axis.className = "axis-band";
+axis.innerHTML = '<div class="arrowL">&larr; looser capacity</div>' +
+                 '<div class="blbl">Adequate (3)</div>' +
+                 '<div class="arrowR">tighter capacity &rarr;</div>';
+chart.appendChild(axis);
+
+const rowsWrap = document.createElement("div");
+rowsWrap.className = "rows";
+const bl = document.createElement("div");
+bl.className = "baseline";
+rowsWrap.appendChild(bl);
+
+const rowEls = {};
+DATA.regions.forEach(r => {
+  const row = document.createElement("div");
+  row.className = "row";
+  row.innerHTML =
+    `<div class="name" data-r="${r.key}">${r.name}</div>
+     <div class="barwrap">
+       <div class="bar"></div>
+       <span class="val"></span>
+       <span class="thintag" style="display:none"></span>
+       <span class="nodata" style="display:none">no reports this year</span>
+     </div>`;
+  rowsWrap.appendChild(row);
+  rowEls[r.key] = row;
+});
+chart.appendChild(rowsWrap);
+
+function render(year) {
+  currentYear = year;
+  const stats = DATA.stats[year];
+  const yearLabel = year === "all"
+    ? "4-year Q3 average (2022\u20132025)"
+    : `Q3 ${year}`;
+  csubEl.innerHTML = year === "all"
+    ? "4-year Q3 average (2022&ndash;2025), all reporting weeks &amp; commodities"
+    : `Q3 ${year} only, all reporting weeks &amp; commodities`;
+
+  // Update each row
+  DATA.regions.forEach(r => {
+    const row = rowEls[r.key];
+    const s = stats[r.key];
+    const bar = row.querySelector(".bar");
+    const val = row.querySelector(".val");
+    const thinTag = row.querySelector(".thintag");
+    const nodata = row.querySelector(".nodata");
+
+    if (!s || s.mean === null || s.n === 0) {
+      bar.style.width = "0";
+      val.textContent = "";
+      thinTag.style.display = "none";
+      nodata.style.display = "block";
+      return;
+    }
+    nodata.style.display = "none";
+
+    const dev = s.mean - BASE;
+    const halfWidthPct = (Math.abs(dev) / maxDev) * 50;
+    const isPositive = dev > 0;
+    const leftPct = isPositive ? 50 : (50 - halfWidthPct);
+    const widthPct = halfWidthPct;
+    const isThin = s.n < THIN_THRESHOLD;
+
+    bar.style.left = leftPct + "%";
+    bar.style.width = widthPct + "%";
+    bar.style.background = colorFor(dev);
+    bar.classList.toggle("thin", isThin);
+
+    const labelInside = halfWidthPct > 14;
+    val.textContent = (dev > 0 ? "+" : "") + dev.toFixed(2);
+    val.className = "val" + (labelInside ? "" : " outside");
+    val.style.cssText = "";  // reset
+    val.style.top = "50%";
+    val.style.transform = "translateY(-50%)";
+    if (labelInside) {
+      if (isPositive) {
+        val.style.right = `calc(${100 - (leftPct + widthPct)}% + 8px)`;
+        val.style.left = "auto";
+      } else {
+        val.style.left = `calc(${leftPct}% + 8px)`;
+        val.style.right = "auto";
+      }
+    } else {
+      if (isPositive) {
+        val.style.left = `calc(${leftPct + widthPct}% + 8px)`;
+        val.style.right = "auto";
+      } else {
+        val.style.right = `calc(${100 - leftPct}% + 8px)`;
+        val.style.left = "auto";
+      }
+    }
+
+    // Thin-sample tag positioned beyond the value label
+    if (isThin) {
+      thinTag.textContent = `n=${s.n}`;
+      thinTag.style.display = "block";
+      // Position to the right of value label, or just outside the bar end
+      const baseOffset = labelInside ? widthPct : halfWidthPct;
+      if (isPositive) {
+        thinTag.style.left = `calc(${leftPct + widthPct}% + 48px)`;
+        thinTag.style.right = "auto";
+      } else {
+        thinTag.style.right = `calc(${100 - leftPct}% + 48px)`;
+        thinTag.style.left = "auto";
+      }
+    } else {
+      thinTag.style.display = "none";
+    }
+  });
+
+  // Generate insight text dynamically
+  const valid = DATA.regions
+    .map(r => ({...r, ...stats[r.key]}))
+    .filter(r => r.mean !== null);
+  valid.sort((a,b) => b.mean - a.mean);
+  const tightest = valid[0];
+  const loosest = valid[valid.length - 1];
+  const tightCount = valid.filter(r => r.mean - BASE > 0.15).length;
+  const looseCount = valid.filter(r => r.mean - BASE < -0.15).length;
+  const missing = DATA.regions.length - valid.length;
+
+  let insightHTML;
+  if (year === "all") {
+    insightHTML =
+      `<b>The headline:</b> the all-regions average sits near 3, but that flat number hides a spread of nearly <b>3 full points</b> across regions. ` +
+      `<b>${tightest.name}</b> averages <b>${tightest.mean}</b> (chronic shortage); <b>${loosest.name}</b> averages <b>${loosest.mean}</b> (chronic surplus, near the floor of the scale). ` +
+      `${tightCount} regions run materially tighter than adequate, ${looseCount} materially looser &mdash; capacity isn&rsquo;t a single market, it&rsquo;s a geographic patchwork.`;
+  } else {
+    insightHTML =
+      `<b>Q3 ${year} snapshot:</b> ${tightCount} region${tightCount===1?"":"s"} ran tighter than adequate, ${looseCount} ran looser. ` +
+      `Tightest: <b>${tightest.name}</b> at <b>${tightest.mean}</b> (${tightest.n} reports). ` +
+      `Loosest: <b>${loosest.name}</b> at <b>${loosest.mean}</b> (${loosest.n} reports). ` +
+      (missing > 0 ? `${missing} region${missing===1?"":"s"} had no reports in this year. ` : "") +
+      `Striped bars flag regions with fewer than ${THIN_THRESHOLD} reports for this year &mdash; single-year deviations on thin samples are less reliable than the 4-year average.`;
+  }
+  insightEl.innerHTML = insightHTML;
+}
+
+// Wire up year tabs
+document.querySelectorAll(".yrtab").forEach(btn => {
+  btn.onclick = () => {
+    document.querySelectorAll(".yrtab").forEach(b => b.classList.remove("on"));
+    btn.classList.add("on");
+    render(btn.dataset.y);
+  };
+});
+
+render("all");
+</script>
+</body>
+</html>
