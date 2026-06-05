@@ -151,6 +151,27 @@
     border-top:1px solid var(--n-border);
     font-family:'Open Sans',sans-serif;font-size:10.5px;
     color:var(--n-text);font-weight:400;letter-spacing:.01em}
+
+  /* ── Mobile ── */
+  @media (max-width: 640px) {
+    .card{padding:16px 14px 14px;border-radius:0}
+    .ctitle{font-size:18px}
+    .csub{font-size:11px}
+    .region-note{font-size:9.5px}
+    .chart{padding-left:100px;padding-right:12px}
+    .row .name{width:90px;font-size:11px}
+    .axis-band{height:22px;margin-bottom:4px}
+    .axis-band .arrowL,.axis-band .arrowR{font-size:0;bottom:4px}
+    .axis-band .arrowL::after{content:"← Surplus";font-size:8px}
+    .axis-band .arrowR::after{content:"Shortage →";font-size:8px}
+    .axis-band .blbl{font-size:8px;padding:0 3px;bottom:4px}
+    .row{height:28px;margin-bottom:1px}
+    .row .val{font-size:10px}
+    .legend{display:none}
+    .insights li{font-size:12px;padding-left:18px}
+    .insights li::before{left:4px;top:11px;width:5px;height:5px}
+    .source{font-size:9.5px}
+  }
 </style>
 </head>
 <body>
