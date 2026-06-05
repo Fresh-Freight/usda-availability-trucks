@@ -160,12 +160,17 @@
     .region-note{font-size:9.5px}
     .chart{padding-left:100px;padding-right:12px}
     .row .name{width:90px;font-size:11px}
-    .axis-band .arrowL,.axis-band .arrowR{font-size:9px}
-    .axis-band .blbl{font-size:9px}
+    .axis-band{height:22px;margin-bottom:4px}
+    .axis-band .arrowL,.axis-band .arrowR{font-size:0;bottom:4px}
+    .axis-band .arrowL::after{content:"← Surplus";font-size:8px}
+    .axis-band .arrowR::after{content:"Shortage →";font-size:8px}
+    .axis-band .blbl{font-size:8px;padding:0 3px;bottom:4px}
+    .row{height:28px;margin-bottom:1px}
     .row .val{font-size:10px}
-    .legend{right:8px;bottom:8px;font-size:10px}
-    .legend .lg-heading{font-size:8.5px}
+    .legend{display:none}
+    .legend .lg-heading{display:none}
     .legend .lg-sw{width:10px;height:8px}
+    .legend .lg-row{margin:0}
     .insights li{font-size:12px;padding-left:18px}
     .insights li::before{left:4px;top:11px;width:5px;height:5px}
     .source{font-size:9.5px}
